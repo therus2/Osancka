@@ -1,3 +1,5 @@
+import sys
+
 import cv2
 import mediapipe as mp
 import numpy as np
@@ -27,9 +29,13 @@ def calculate_angle(a, b, c):
 
 # --- ОСНОВНАЯ ЧАСТЬ ---
 
+if len(sys.argv) != 3:
+    print("Ошибка: Укажите путь к исходному и конечному файлам")
+    sys.exit(1)
+
 # Укажите путь к вашему фото, сделанному СБОКУ.
-image_path = 'side_foto/s2.jpg'  # <--- ЗАМЕНИТЕ НА ИМЯ ВАШЕГО ФАЙЛА
-output_path = 'side_result/result_side_photo2.jpg'  # Имя файла для сохранения результата
+image_path = sys.argv[1]  # <--- ЗАМЕНИТЕ НА ИМЯ ВАШЕГО ФАЙЛА
+output_path = sys.argv[2]  # Имя файла для сохранения результата
 
 # Путь к файлу шрифта
 font_path = 'DejaVuSans.ttf'  # <--- УБЕДИТЕСЬ, ЧТО ФАЙЛ В ТОЙ ЖЕ ПАПКЕ
