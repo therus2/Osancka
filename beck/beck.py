@@ -1,3 +1,4 @@
+
 import sys
 
 import cv2
@@ -28,6 +29,7 @@ def calculate_angle_with_vertical(p1, p2):
 
 # --- ОСНОВНАЯ ЧАСТЬ ---
 
+
 if len(sys.argv) != 3:
     print("Ошибка: Укажите путь к исходному и конечному файлам")
     sys.exit(1)
@@ -35,6 +37,7 @@ if len(sys.argv) != 3:
 # Укажите путь к вашему фото, сделанному СБОКУ.
 image_path = sys.argv[1]  # <--- ЗАМЕНИТЕ НА ИМЯ ВАШЕГО ФАЙЛА
 output_path = sys.argv[2]
+
 
 # Путь к файлу шрифта для русского текста
 font_path = 'DejaVuSans.ttf'  # <--- УБЕДИТЕСЬ, ЧТО ФАЙЛ В ТОЙ ЖЕ ПАПКЕ
