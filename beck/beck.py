@@ -1,3 +1,6 @@
+
+import sys
+
 import cv2
 import mediapipe as mp
 import numpy as np
@@ -26,9 +29,15 @@ def calculate_angle_with_vertical(p1, p2):
 
 # --- ОСНОВНАЯ ЧАСТЬ ---
 
-# Укажите путь к вашему фото, сделанному со спины.
-image_path = 'beck_foto/b11.jpg'  # <--- ЗАМЕНИТЕ НА ИМЯ ВАШЕГО ФАЙЛА
-output_path = 'beck_result/result_back_photo11.jpg'  # Имя файла для сохранения результата
+
+if len(sys.argv) != 3:
+    print("Ошибка: Укажите путь к исходному и конечному файлам")
+    sys.exit(1)
+
+# Укажите путь к вашему фото, сделанному СБОКУ.
+image_path = sys.argv[1]  # <--- ЗАМЕНИТЕ НА ИМЯ ВАШЕГО ФАЙЛА
+output_path = sys.argv[2]
+
 
 # Путь к файлу шрифта для русского текста
 font_path = 'DejaVuSans.ttf'  # <--- УБЕДИТЕСЬ, ЧТО ФАЙЛ В ТОЙ ЖЕ ПАПКЕ
