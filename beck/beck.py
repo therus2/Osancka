@@ -27,6 +27,7 @@ def calculate_angle_with_vertical(p1, p2):
 def main(input_path: str, output_path: str):
     """Анализ фото для выявления сколиоза."""
 
+
     def load_font(size):
         """Загрузка шрифта с fallback."""
         font_candidates = [
@@ -115,7 +116,14 @@ def main(input_path: str, output_path: str):
         mp_drawing.draw_landmarks(image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
 
         cv2.imwrite(output_path, image)
-        return output_path
+
+        results_text = {
+            "shoulder_angle": round(shoulder_angle, 1),
+            "spine_angle": round(spine_angle_from_vertical, 1),
+            "diagnosis": diagnosis
+        }
+
+        return output_path, results_text
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:

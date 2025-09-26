@@ -101,7 +101,16 @@ def main(input_path: str, output_path: str):
         mp_drawing.draw_landmarks(image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
 
         cv2.imwrite(output_path, image)
-        return output_path
+
+        results_text = {
+            "back_angle": round(back_angle, 1),
+            "body_angle": round(body_angle, 1),
+            "kyphosis": kyphosis_diag,
+            "lordosis": lordosis_diag
+        }
+
+        return output_path, results_text
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
