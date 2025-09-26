@@ -1,18 +1,19 @@
 import os
 import logging
-import uuid
-import subprocess
+import time
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-# Настройка логирования для отладки
+import beck.beck
+
+# Настройка логирования
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
-# --- Конфигурация под вашу структуру проекта ---
-TOKEN = "8064118647:AAFsng1xffS7J-MgsWwVi8wFZo0eqAiLjRY"  # <<< ВСТАВЬТЕ СЮДА ВАШ ТОКЕН
+# Конфигурация
+TOKEN = "8064118647:AAFsng1xffS7J-MgsWwVi8wFZo0eqAiLjRY"
 
 BUTTONS_CONFIG = {
     "Анализ сбоку (Кифоз/Лордоз)": {
@@ -27,11 +28,10 @@ BUTTONS_CONFIG = {
     }
 }
 
-# Словарь для хранения выбора пользователя {user_id: "название кнопки"}
+# Словарь для хранения выбора пользователя
 user_choice = {}
 
-
-# --- Функции-обработчики ---
+# --- Обработчики ---
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Отправляет приветственное сообщение и показывает кнопки."""
@@ -41,7 +41,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "Выберите тип анализа, нажав на одну из кнопок ниже, а затем отправьте мне фотографию.",
         reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False, resize_keyboard=True),
     )
-
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обрабатывает нажатие кнопок и запоминает выбор пользователя."""
@@ -57,7 +56,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     else:
         await update.message.reply_text("Пожалуйста, используйте кнопки для выбора анализа.")
 
-
 async def photo_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обрабатывает полученную фотографию."""
     user_id = update.message.from_user.id
@@ -69,41 +67,86 @@ async def photo_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     choice = user_choice[user_id]
     config = BUTTONS_CONFIG[choice]
 
-    photo_file = await update.message.photo[-1].get_file()
-    unique_filename = f"{uuid.uuid4()}.jpg"
+    # Формируем путь для сохранения фото (совместимый с beck.py)
+    upload_path = os.path.abspath(os.path.join("beck", "..", "foto", "rare.jpg"))
+    result_path = os.path.abspath(os.path.join("beck", "..", "foto", "resul.jpg"))
 
-    upload_path = os.path.join(config["upload_folder"], unique_filename)
-    result_path = os.path.join(config["result_folder"], unique_filename)
+    # Логируем текущую рабочую директорию и путь к файлу
+    logger.info(f"Текущая рабочая директория: {os.getcwd()}")
+    logger.info(f"Сохранение фото в: {upload_path}")
 
-    await photo_file.download_to_drive(upload_path)
+    # Создаем папку foto, если она не существует
+    os.makedirs(os.path.dirname(upload_path), exist_ok=True)
+
+    # Загружаем фото
+    try:
+        photo_file = await update.message.photo[-1].get_file()
+        await photo_file.download_to_drive(upload_path)
+        logger.info(f"Фото успешно сохранено в: {upload_path}")
+    except Exception as e:
+        logger.error(f"Ошибка при сохранении фото: {e}")
+        await update.message.reply_text("❌ Ошибка при загрузке фото. Попробуйте еще раз.")
+        return
+
+    # Проверяем, существует ли файл и доступен ли он
+    if not os.path.exists(upload_path):
+        logger.error(f"Файл {upload_path} не был создан.")
+        await update.message.reply_text("❌ Не удалось сохранить фото. Попробуйте еще раз.")
+        return
+
+
+
     await update.message.reply_text("Фото получено. Начинаю анализ, это может занять несколько секунд...")
 
     try:
-        command = ["python", config["script"], upload_path, result_path]
-        subprocess.run(command, check=True, timeout=60)
+        if choice == "Анализ со спины (Сколиоз)":
+            # Вызываем beck.beck.main() без аргументов
+            beck.beck.main()
+            # Ждем результат с таймаутом
+            timeout = 30  # секунд
+            start_time = time.time()
+            while not os.path.exists(result_path):
+                if time.time() - start_time > timeout:
+                    raise TimeoutError("Превышено время ожидания результата")
+                time.sleep(1)
 
-        await update.message.reply_photo(photo=open(result_path, 'rb'), caption="✅ Анализ завершен! Вот ваш результат.")
+            # Проверяем, существует ли результат
+            if os.path.exists(result_path):
+                logger.info(f"Результат найден: {result_path}")
+                await update.message.reply_photo(
+                    photo=open(result_path, 'rb'),
+                    caption="✅ Анализ завершен! Вот ваш результат."
+                )
+            else:
+                raise FileNotFoundError(f"Результат не найден: {result_path}")
 
-    except subprocess.CalledProcessError:
-        logger.error(f"Скрипт {config['script']} завершился с ошибкой.")
-        await update.message.reply_text(
-            "❌ Произошла ошибка во время анализа. Попробуйте другое фото или проверьте логи.")
-    except FileNotFoundError:
-        logger.error(f"Результат не был создан. Проверьте скрипт {config['script']}.")
-        await update.message.reply_text("❌ Не удалось получить результат анализа. Свяжитесь с администратором.")
+        elif choice == "Анализ сбоку (Кифоз/Лордоз)":
+            await update.message.reply_text("Анализ кифоза/лордоза пока не реализован.")
+
     except Exception as e:
-        logger.error(f"Произошла неизвестная ошибка: {e}")
-        await update.message.reply_text("❌ Произошла непредвиденная ошибка.")
-    finally:
-        if user_id in user_choice:
-            del user_choice[user_id]
-
+        logger.error(f"Ошибка при анализе: {e}")
+        await update.message.reply_text(
+            f"❌ Произошла ошибка во время анализа: {str(e)}. Попробуйте другое фото."
+        )
+    #finally:
+        # Удаляем временные файлы и выбор пользователя
+        #if os.path.exists(upload_path):
+        #    os.remove(upload_path)
+        #    logger.info(f"Файл {upload_path} удален.")
+        #if os.path.exists(result_path):
+        #    os.remove(result_path)
+        #    logger.info(f"Файл {result_path} удален.")
+        #if user_id in user_choice:
+        #    del user_choice[user_id]
 
 def main() -> None:
     """Основная функция для запуска бота."""
     for config in BUTTONS_CONFIG.values():
         os.makedirs(config["upload_folder"], exist_ok=True)
         os.makedirs(config["result_folder"], exist_ok=True)
+
+    # Логируем начальную рабочую директорию
+    logger.info(f"Начальная рабочая директория: {os.getcwd()}")
 
     application = Application.builder().token(TOKEN).build()
 
@@ -113,7 +156,6 @@ def main() -> None:
 
     print("Бот запущен...")
     application.run_polling()
-
 
 if __name__ == "__main__":
     main()
